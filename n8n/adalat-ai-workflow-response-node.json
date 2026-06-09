@@ -1,0 +1,120 @@
+{
+  "name": "Adalat AI Chatbot (Respond to Webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ce2b1a2f-d747-4909-a1f5-0bdb73a47c37",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-320, 0],
+      "id": "18e819bc-d1da-46b8-9c88-327f474aa52c",
+      "name": "Webhook",
+      "webhookId": "ce2b1a2f-d747-4909-a1f5-0bdb73a47c37"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1-chat-input",
+              "name": "chatInput",
+              "value": "={{ $json.body?.chatInput ?? $json.query?.chatInput ?? $json.chatInput ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a2-session-id",
+              "name": "sessionId",
+              "value": "={{ $json.body?.sessionId ?? $json.query?.sessionId ?? $json.sessionId ?? 'default-session' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-80, 0],
+      "id": "f8c2e901-4b5a-4d2e-9f11-2a8b0c4d5e6f",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "promptType": "auto",
+        "options": {
+          "systemMessage": "You are an expert, highly professional Pakistani Legal AI Assistant (\"Adalat AI\"). Your role is to act like a senior defense lawyer practicing in Pakistan.\n\nCRITICAL MANDATES:\n1. ONLY answer questions related to the Pakistani Constitution (1973), Pakistan Penal Code (PPC), Criminal Procedure Code (CrPC), and local legal rules.\n2. If a query is unrelated to Pakistani law, politely decline, stating your jurisdiction is strictly Pakistani law.\n\nLANGUAGE RULES (STRICT — HIGHEST PRIORITY):\n3. Detect the EXACT language of the user's latest message. Respond ONLY in that same language — never substitute another language.\n   - English question → entire answer in English.\n   - Urdu script (اردو) question → entire answer in Urdu script, NOT Pashto.\n   - Pashto script (پښتو) question → entire answer in Pashto script, NOT Urdu. Do NOT reply in Urdu when the user wrote Pashto.\n   - Roman Urdu (Latin letters, Urdu grammar/vocabulary) → Roman Urdu only.\n   - Roman Pashto (Latin letters, Pashto grammar/vocabulary) → Roman Pashto only.\n4. If the message mixes languages, match the dominant language. When unclear between Urdu and Pashto, use script and morphology: Pashto text = Pashto answer; Urdu text = Urdu answer.\n5. \"Suggested Next Questions\" MUST be in the same language as your answer.\n\nOUTPUT FORMATTING:\n- Use markdown headers: ## Relevant Legal Articles, ## Procedure, ## Next Steps.\n- Present comparisons, articles, or steps in proper markdown TABLES (header row + columns), not plain lists, when data has 2+ fields.\n- When asked about arrest or bail, detail bail mechanics, FIR relevance, and cite Article 9 and Articles 10/10A.\n- End with exactly 3 items under \"Suggested Next Questions\" in the user's language."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [200, 0],
+      "id": "4a897d5f-edaf-4f13-ab85-9b4301f06c1f",
+      "name": "Adalat AI Agent"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [480, 0],
+      "id": "ca83079b-4dd4-4a3c-92e6-678dfd9e95f8",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [360, 200],
+      "id": "a55b111e-7dbe-4c6c-80ac-b239c2518aec",
+      "name": "Window Buffer Memory"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "id": "d52a6cd2-e241-46f7-ace0-eb0dd2403f91",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "VtNc5aC540QHUEGQ",
+          "name": "Groq account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Normalize Input", "type": "main", "index": 0 }]]
+    },
+    "Normalize Input": {
+      "main": [[{ "node": "Adalat AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Adalat AI Agent": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "Adalat AI Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [{ "node": "Adalat AI Agent", "type": "ai_memory", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
